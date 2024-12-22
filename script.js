@@ -140,45 +140,79 @@ async function fetchSheet(sheetName) {
         vehicle.state = "in repair";
       }
     }
-  
-
+    /////////////////////////////////////////
 
 // Function to filter clients based on input
 function filterClients(searchWord) {
-  // Convert wildcard (*) to regex
   const regex = new RegExp(`${searchWord.replace(/\*/g, ".*")}`, "i");
-
-  // Filter the clients
   return parentObject.AS.filter(clt => regex.test(clt.client));
 }
 
 // Handle search button click
 document.getElementById("searchButton").addEventListener("click", () => {
-  // Get user input
-  const searchWord = document.getElementById("searchInput").value;
-
-  // Perform the filtering
-  const results = filterClients(searchWord);
-
-  // Display the results
+  const searchWord = document.getElementById("searchInput").value.trim();
   const resultDiv = document.getElementById("result");
+
+  // Validate input
+  if (!searchWord) {
+    resultDiv.textContent = "Please enter a valid search term.";
+    return;
+  }
+
+  // Perform filtering
+  const results = filterClients(searchWord);
   resultDiv.innerHTML = ""; // Clear previous results
 
   if (results.length > 0) {
-    results.forEach(clt => {
-      const clientElement = document.createElement("p");
-      clientElement.textContent = `Client: ${clt.client}`;
-      resultDiv.appendChild(clientElement);
+    const instructions = document.createElement("p");
+    instructions.textContent = "Select the correct client:";
+    resultDiv.appendChild(instructions);
+
+    const list = document.createElement("ul");
+
+    results.forEach((clt, index) => {
+      const listItem = document.createElement("li");
+      const button = document.createElement("button");
+      button.textContent = clt.client;
+      button.addEventListener("click", () => displayClientDetails(clt));
+      listItem.appendChild(button);
+      list.appendChild(listItem);
     });
+
+    resultDiv.appendChild(list);
   } else {
     resultDiv.textContent = "No matches found.";
   }
 });
 
+// Function to display details of the selected client
+function displayClientDetails(client) {
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = ""; // Clear previous results
 
+  const clientDetails = document.createElement("div");
+  clientDetails.innerHTML = `
+    <h3>Client: ${client.client}</h3>
+    <h4>Vehicles:</h4>
+    <ul>
+      ${client.vehicles
+        .map(vehicle => `
+          <li>
+            <strong>ID_CHASSIS:</strong> ${vehicle.ID_CHASSIS}<br>
+            <strong>ID_VEHICLE:</strong> ${vehicle.ID_VEHICLE}<br>
+            <strong>Immatric:</strong> ${vehicle.Immatric}<br>
+            <strong>Marque:</strong> ${vehicle.Marque}<br>
+            <strong>Modèle:</strong> ${vehicle.Modèle}<br>
+            <strong>State:</strong> ${vehicle.state}<br>
+          </li>
+        `)
+        .join("")}
+    </ul>
+  `;
+  resultDiv.appendChild(clientDetails);
+}
 
-
-  
+  /////////////////////////////////////////////
 
  });
    
