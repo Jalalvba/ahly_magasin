@@ -141,77 +141,138 @@ async function fetchSheet(sheetName) {
       }
     }
     /////////////////////////////////////////
-
-// Function to filter clients based on input
-function filterClients(searchWord) {
-  const regex = new RegExp(`${searchWord.replace(/\*/g, ".*")}`, "i");
-  return parentObject.AS.filter(clt => regex.test(clt.client));
-}
-
-// Handle search button click
-document.getElementById("searchButton").addEventListener("click", () => {
-  const searchWord = document.getElementById("searchInput").value.trim();
-  const resultDiv = document.getElementById("result");
-
-  // Validate input
-  if (!searchWord) {
-    resultDiv.textContent = "Please enter a valid search term.";
-    return;
-  }
-
-  // Perform filtering
-  const results = filterClients(searchWord);
-  resultDiv.innerHTML = ""; // Clear previous results
-
-  if (results.length > 0) {
-    const instructions = document.createElement("p");
-    instructions.textContent = "Select the correct client:";
-    resultDiv.appendChild(instructions);
-
-    const list = document.createElement("ul");
-
-    results.forEach((clt, index) => {
-      const listItem = document.createElement("li");
-      const button = document.createElement("button");
-      button.textContent = clt.client;
-      button.addEventListener("click", () => displayClientDetails(clt));
-      listItem.appendChild(button);
-      list.appendChild(listItem);
+    function filterClients(searchWord) {
+      const regex = new RegExp(`${searchWord.replace(/\*/g, ".*")}`, "i");
+      return parentObject.AS.filter(clt => {
+        // Check if client name matches
+        if (regex.test(clt.client)) {
+          return true;
+        }
+    
+        // Check if any vehicle's Immatric matches
+        return clt.vehicles.some(vehicle => regex.test(vehicle.Immatric));
+      });
+    }
+    
+    document.getElementById("searchButton").addEventListener("click", () => {
+      const searchWord = document.getElementById("searchInput").value.trim();
+      const resultDiv = document.getElementById("result");
+    
+      if (!searchWord) {
+        resultDiv.textContent = "Please enter a valid search term.";
+        return;
+      }
+    
+      const results = filterClients(searchWord);
+      resultDiv.innerHTML = "";
+    
+      if (results.length > 0) {
+        results.forEach(clt => {
+          clt.vehicles.forEach(vehicle => {
+            // Display vehicle details in a table above the spare parts table
+            const vehicleDetailsTable = document.createElement("table");
+            vehicleDetailsTable.border = "1";
+    
+            // Create table headers for vehicle details
+            const vehicleHeaders = ["ID_CHASSIS", "ID_VEHICLE", "Marque", "Modèle", "Immatric", "state"];
+            const vehicleHeaderRow = document.createElement("tr");
+            vehicleHeaders.forEach(header => {
+              const th = document.createElement("th");
+              th.textContent = header;
+              vehicleHeaderRow.appendChild(th);
+            });
+            vehicleDetailsTable.appendChild(vehicleHeaderRow);
+    
+            // Create a single row with vehicle details
+            const vehicleDataRow = document.createElement("tr");
+            vehicleHeaders.forEach(header => {
+              const td = document.createElement("td");
+              td.textContent = vehicle[header] !== undefined ? vehicle[header] : "";
+              vehicleDataRow.appendChild(td);
+            });
+            vehicleDetailsTable.appendChild(vehicleDataRow);
+    
+            // Add row for ID_DEVIS and its details
+            const quote = vehicle.quotes?.[0]?.details;
+            if (quote) {
+              const quoteRow = document.createElement("tr");
+              const quoteData = `
+                ID_DEVIS: ${vehicle.quotes?.[0]?.ID_DEVIS || "N/A"},
+                Date: ${quote.Date || "N/A"},
+                Code_INTERNE: ${quote.Code_INTERNE || "N/A"},
+                Mt_PIECES: ${quote.Mt_PIECES || "N/A"},
+                Mt_MO: ${quote.Mt_MO || "N/A"}
+              `;
+              const quoteCell = document.createElement("td");
+              quoteCell.colSpan = vehicleHeaders.length;
+              quoteCell.textContent = quoteData;
+              quoteRow.appendChild(quoteCell);
+              vehicleDetailsTable.appendChild(quoteRow);
+            }
+    
+            // Add row for repair details
+            if (vehicle.repair.length > 0) {
+              const repairRow = document.createElement("tr");
+              const repairData = vehicle.repair
+                .map(
+                  repair => `
+                    ID_OR: ${repair.ID_OR || "N/A"},
+                    Date: ${repair.Date || "N/A"},
+                    Mt_PIECES: ${repair.Mt_PIECES || "N/A"},
+                    Mt_MO: ${repair.Mt_MO || "N/A"}
+                  `
+                )
+                .join("\n");
+              const repairCell = document.createElement("td");
+              repairCell.colSpan = vehicleHeaders.length;
+              repairCell.textContent = repairData;
+              repairRow.appendChild(repairCell);
+              vehicleDetailsTable.appendChild(repairRow);
+            }
+    
+            resultDiv.appendChild(vehicleDetailsTable);
+    
+            if (quote?.spart_order?.length) {
+              const spartOrder = quote.spart_order;
+    
+              // Create spare parts table dynamically
+              const spartOrderTable = document.createElement("table");
+              spartOrderTable.border = "1";
+    
+              // Create table headers for spare parts
+              const headers = Object.keys(spartOrder[0]); // Use the keys of the first object
+              const headerRow = document.createElement("tr");
+              headers.forEach(header => {
+                const th = document.createElement("th");
+                th.textContent = header;
+                headerRow.appendChild(th);
+              });
+              spartOrderTable.appendChild(headerRow);
+    
+              // Create table rows for spare parts
+              spartOrder.forEach(part => {
+                const row = document.createElement("tr");
+                headers.forEach(header => {
+                  const td = document.createElement("td");
+                  td.textContent = part[header] !== undefined ? part[header] : ""; // Fallback for undefined values
+                  row.appendChild(td);
+                });
+                spartOrderTable.appendChild(row);
+              });
+    
+              resultDiv.appendChild(spartOrderTable);
+            } else {
+              const noParts = document.createElement("p");
+              noParts.textContent = "No spare parts available.";
+              resultDiv.appendChild(noParts);
+            }
+          });
+        });
+      } else {
+        resultDiv.textContent = "No matches found.";
+      }
     });
-
-    resultDiv.appendChild(list);
-  } else {
-    resultDiv.textContent = "No matches found.";
-  }
-});
-
-// Function to display details of the selected client
-function displayClientDetails(client) {
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = ""; // Clear previous results
-
-  const clientDetails = document.createElement("div");
-  clientDetails.innerHTML = `
-    <h3>Client: ${client.client}</h3>
-    <h4>Vehicles:</h4>
-    <ul>
-      ${client.vehicles
-        .map(vehicle => `
-          <li>
-            <strong>ID_CHASSIS:</strong> ${vehicle.ID_CHASSIS}<br>
-            <strong>ID_VEHICLE:</strong> ${vehicle.ID_VEHICLE}<br>
-            <strong>Immatric:</strong> ${vehicle.Immatric}<br>
-            <strong>Marque:</strong> ${vehicle.Marque}<br>
-            <strong>Modèle:</strong> ${vehicle.Modèle}<br>
-            <strong>State:</strong> ${vehicle.state}<br>
-          </li>
-        `)
-        .join("")}
-    </ul>
-  `;
-  resultDiv.appendChild(clientDetails);
-}
-
+    
   /////////////////////////////////////////////
 
  });

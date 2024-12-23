@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Client Filter</title>
+  <title>Search Clients and Vehicles</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Client Search</h1>
-  <input type="text" id="searchInput" placeholder="Enter search term (e.g., *bouchra*)" />
-  <button id="searchButton">Search</button>
-  <div id="result"></div>
-
+  <div class="container">
+    <h1>Search Clients and Vehicles</h1>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Enter client name or immatriculation" />
+      <button id="searchButton">Search</button>
+    </div>
+    <div id="result"></div>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>
