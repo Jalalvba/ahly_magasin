@@ -144,12 +144,7 @@ async function fetchSheet(sheetName) {
     function filterClients(searchWord) {
       const regex = new RegExp(`${searchWord.replace(/\*/g, ".*")}`, "i");
       return parentObject.AS.filter(clt => {
-        // Check if client name matches
-        if (regex.test(clt.client)) {
-          return true;
-        }
-    
-        // Check if any vehicle's Immatric matches
+        if (regex.test(clt.client)) return true;
         return clt.vehicles.some(vehicle => regex.test(vehicle.Immatric));
       });
     }
@@ -157,6 +152,7 @@ async function fetchSheet(sheetName) {
     document.getElementById("searchButton").addEventListener("click", () => {
       const searchWord = document.getElementById("searchInput").value.trim();
       const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "";
     
       if (!searchWord) {
         resultDiv.textContent = "Please enter a valid search term.";
@@ -164,115 +160,126 @@ async function fetchSheet(sheetName) {
       }
     
       const results = filterClients(searchWord);
-      resultDiv.innerHTML = "";
     
-      if (results.length > 0) {
-        results.forEach(clt => {
-          clt.vehicles.forEach(vehicle => {
-            // Display vehicle details in a table above the spare parts table
-            const vehicleDetailsTable = document.createElement("table");
-            vehicleDetailsTable.border = "1";
+      if (results.length === 1) {
+        displayClientData(results[0], resultDiv);
+      } else if (results.length > 1) {
+        const instructions = document.createElement("p");
+        instructions.textContent = "Select the correct client:";
+        resultDiv.appendChild(instructions);
     
-            // Create table headers for vehicle details
-            const vehicleHeaders = ["ID_CHASSIS", "ID_VEHICLE", "Marque", "Modèle", "Immatric", "state"];
-            const vehicleHeaderRow = document.createElement("tr");
-            vehicleHeaders.forEach(header => {
-              const th = document.createElement("th");
-              th.textContent = header;
-              vehicleHeaderRow.appendChild(th);
-            });
-            vehicleDetailsTable.appendChild(vehicleHeaderRow);
-    
-            // Create a single row with vehicle details
-            const vehicleDataRow = document.createElement("tr");
-            vehicleHeaders.forEach(header => {
-              const td = document.createElement("td");
-              td.textContent = vehicle[header] !== undefined ? vehicle[header] : "";
-              vehicleDataRow.appendChild(td);
-            });
-            vehicleDetailsTable.appendChild(vehicleDataRow);
-    
-            // Add row for ID_DEVIS and its details
-            const quote = vehicle.quotes?.[0]?.details;
-            if (quote) {
-              const quoteRow = document.createElement("tr");
-              const quoteData = `
-                ID_DEVIS: ${vehicle.quotes?.[0]?.ID_DEVIS || "N/A"},
-                Date: ${quote.Date || "N/A"},
-                Code_INTERNE: ${quote.Code_INTERNE || "N/A"},
-                Mt_PIECES: ${quote.Mt_PIECES || "N/A"},
-                Mt_MO: ${quote.Mt_MO || "N/A"}
-              `;
-              const quoteCell = document.createElement("td");
-              quoteCell.colSpan = vehicleHeaders.length;
-              quoteCell.textContent = quoteData;
-              quoteRow.appendChild(quoteCell);
-              vehicleDetailsTable.appendChild(quoteRow);
-            }
-    
-            // Add row for repair details
-            if (vehicle.repair.length > 0) {
-              const repairRow = document.createElement("tr");
-              const repairData = vehicle.repair
-                .map(
-                  repair => `
-                    ID_OR: ${repair.ID_OR || "N/A"},
-                    Date: ${repair.Date || "N/A"},
-                    Mt_PIECES: ${repair.Mt_PIECES || "N/A"},
-                    Mt_MO: ${repair.Mt_MO || "N/A"}
-                  `
-                )
-                .join("\n");
-              const repairCell = document.createElement("td");
-              repairCell.colSpan = vehicleHeaders.length;
-              repairCell.textContent = repairData;
-              repairRow.appendChild(repairCell);
-              vehicleDetailsTable.appendChild(repairRow);
-            }
-    
-            resultDiv.appendChild(vehicleDetailsTable);
-    
-            if (quote?.spart_order?.length) {
-              const spartOrder = quote.spart_order;
-    
-              // Create spare parts table dynamically
-              const spartOrderTable = document.createElement("table");
-              spartOrderTable.border = "1";
-    
-              // Create table headers for spare parts
-              const headers = Object.keys(spartOrder[0]); // Use the keys of the first object
-              const headerRow = document.createElement("tr");
-              headers.forEach(header => {
-                const th = document.createElement("th");
-                th.textContent = header;
-                headerRow.appendChild(th);
-              });
-              spartOrderTable.appendChild(headerRow);
-    
-              // Create table rows for spare parts
-              spartOrder.forEach(part => {
-                const row = document.createElement("tr");
-                headers.forEach(header => {
-                  const td = document.createElement("td");
-                  td.textContent = part[header] !== undefined ? part[header] : ""; // Fallback for undefined values
-                  row.appendChild(td);
-                });
-                spartOrderTable.appendChild(row);
-              });
-    
-              resultDiv.appendChild(spartOrderTable);
-            } else {
-              const noParts = document.createElement("p");
-              noParts.textContent = "No spare parts available.";
-              resultDiv.appendChild(noParts);
-            }
+        const list = document.createElement("ul");
+        results.forEach(client => {
+          const listItem = document.createElement("li");
+          const button = document.createElement("button");
+          button.textContent = client.client;
+          button.addEventListener("click", () => {
+            resultDiv.innerHTML = "";
+            displayClientData(client, resultDiv);
           });
+          listItem.appendChild(button);
+          list.appendChild(listItem);
         });
+    
+        resultDiv.appendChild(list);
       } else {
         resultDiv.textContent = "No matches found.";
       }
     });
     
+    function displayClientData(client, resultDiv) {
+      const clientHeader = document.createElement("h2");
+      clientHeader.textContent = `Client: ${client.client}`;
+      resultDiv.appendChild(clientHeader);
+    
+      client.vehicles.forEach(vehicle => {
+        // Vehicle Details Table
+        const vehicleDetailsTable = document.createElement("table");
+        const vehicleHeaders = ["ID_CHASSIS", "ID_VEHICLE", "Marque", "Modèle", "Immatric", "state"];
+        const vehicleHeaderRow = document.createElement("tr");
+        vehicleHeaders.forEach(header => {
+          const th = document.createElement("th");
+          th.textContent = header;
+          vehicleHeaderRow.appendChild(th);
+        });
+        vehicleDetailsTable.appendChild(vehicleHeaderRow);
+    
+        const vehicleDataRow = document.createElement("tr");
+        vehicleHeaders.forEach(header => {
+          const td = document.createElement("td");
+          td.textContent = vehicle[header] || "N/A";
+          vehicleDataRow.appendChild(td);
+        });
+        vehicleDetailsTable.appendChild(vehicleDataRow);
+    
+        // Quotes Row
+        const quote = vehicle.quotes?.[0]?.details;
+        if (quote) {
+          const quoteRow = document.createElement("tr");
+          const quoteData = `
+            ID_DEVIS: ${vehicle.quotes?.[0]?.ID_DEVIS || "N/A"},
+            Date: ${quote.Date || "N/A"},
+            Code_INTERNE: ${quote.Code_INTERNE || "N/A"},
+            Mt_PIECES: ${quote.Mt_PIECES || "N/A"},
+            Mt_MO: ${quote.Mt_MO || "N/A"}
+          `;
+          const quoteCell = document.createElement("td");
+          quoteCell.colSpan = vehicleHeaders.length;
+          quoteCell.textContent = quoteData;
+          quoteRow.appendChild(quoteCell);
+          vehicleDetailsTable.appendChild(quoteRow);
+        }
+    
+        // Repair Row
+        const repair = vehicle.repair?.[0];
+        if (repair) {
+          const repairRow = document.createElement("tr");
+          const repairData = `
+            ID_OR: ${repair.ID_OR || "N/A"},
+            Date: ${repair.Date || "N/A"},
+            Code_INTERNE: ${repair.Code_INTERNE || "N/A"},
+            Mt_PIECES: ${repair.Mt_PIECES || "N/A"},
+            Mt_MO: ${repair.Mt_MO || "N/A"}
+          `;
+          const repairCell = document.createElement("td");
+          repairCell.colSpan = vehicleHeaders.length;
+          repairCell.textContent = repairData;
+          repairRow.appendChild(repairCell);
+          vehicleDetailsTable.appendChild(repairRow);
+        }
+    
+        resultDiv.appendChild(vehicleDetailsTable);
+    
+        // Spare Parts Table
+        if (quote?.spart_order?.length) {
+          const spartOrderTable = document.createElement("table");
+          const headers = Object.keys(quote.spart_order[0]);
+          const headerRow = document.createElement("tr");
+          headers.forEach(header => {
+            const th = document.createElement("th");
+            th.textContent = header;
+            headerRow.appendChild(th);
+          });
+          spartOrderTable.appendChild(headerRow);
+    
+          quote.spart_order.forEach(part => {
+            const row = document.createElement("tr");
+            headers.forEach(header => {
+              const td = document.createElement("td");
+              td.textContent = part[header] || "N/A";
+              row.appendChild(td);
+            });
+            spartOrderTable.appendChild(row);
+          });
+    
+          resultDiv.appendChild(spartOrderTable);
+        } else {
+          const noParts = document.createElement("p");
+          noParts.textContent = "No spare parts available.";
+          resultDiv.appendChild(noParts);
+        }
+      });
+    }
   /////////////////////////////////////////////
 
  });
